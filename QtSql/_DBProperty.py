@@ -1,5 +1,5 @@
 '''
-_RuntimeSchema
+_DBProperty
     Copyright (C) 2018     Jonathan Geddes - jonathanericgeddes@protonmail.com
 
     This program is free software: you can redistribute it and/or modify
@@ -19,30 +19,24 @@ Created on 27 May 2018
 
 @author: jonathan
 '''
-from typing import *
-from PyQt5.QtSql import QSqlRecord
+class _DBProperty(property):
+        '''
+        Decorator for attributes that are stored in the database.
+        '''
 
-class _RuntimeSchema(object):
-    '''
-    Static class which stores the schema generated from the DBProperties at
-    runtime.
-    '''
-    
-    _schema = {}
-    
-    @staticmethod
-    def Schema() -> Mapping[str, QSqlRecord]:
-        return _RuntimeSchema._schema.copy()
-    
-    @staticmethod
-    def setTableRecord(tableName : str, record : QSqlRecord) -> None:
-        '''
-        Sets the schema record for the table
-        '''
-        schema = _RuntimeSchema._schema
-        schema[tableName] = record
-        
-        
-        
-        
-        
+        def __init__(self, index: int, fget=None, fset=None, 
+                     fdel=None, fdoc=None):
+            '''
+            Constructor:
+            fget - getter method
+            fset - setter method
+            fdel - clearer method
+            fdoc - doc string
+            index - the column number of the property
+            isPrimary - if the property is a primary key
+            linkingProperty - Another _DBProperty in another table that
+                this property is a foreign key of
+            '''
+            super().__init__(fget, fset, fdel, fdoc)
+            self._index = index
+            
