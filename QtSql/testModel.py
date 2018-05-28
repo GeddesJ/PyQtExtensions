@@ -19,13 +19,11 @@ Created on 27 May 2018
 
 @author: jonathan
 '''
-from DBObject import DBObject
-from _RuntimeSchema import _RuntimeSchema
+from QSqlDBObject import QSqlDBObject
+from QSqlDBProperty import QSqlDBProperty
+from QSqlUpgradeManager import QSqlUpgradeManager
 
-print("Runtime Schema initial value \n")
-print(_RuntimeSchema.Schema())
-
-@DBObject
+@QSqlDBObject
 class Employee(object):
     '''
     test
@@ -38,26 +36,29 @@ class Employee(object):
         self._role = role
         self._salary = salary
         
-    @Employee.DBProperty(0, str)
+    @QSqlDBProperty(0, str)
     def name(self):
         return self._name
     
-    @Employee.DBProperty(1, str)
+    @name.setter
+    def name(self, value):
+        self._name = value
+    
+    @QSqlDBProperty(1, str)
     def role(self):
         return self._role
     
-    @Employee.DBProperty(2, float)
+    @QSqlDBProperty(2, float)
     def salary(self):
         return self._salary
     
-print("Runtime Schema new value \n")
-print(_RuntimeSchema.Schema())
 
 bob = Employee("Bob", "Software Engineer", 95000.45)
-print (bob.name() + " is very happy")
+print (bob.name + " is very happy")
+bob.name = "Roberta"
+print (bob.name + " is now transgender and has changed her name")
 
 steve = Employee("Steve", "Marketing", 75000)
-print(steve.name() + " works in " + steve.role())
+print(steve.name + " works in " + steve.role)
 
-print("Final Runtime Schema value \n")
-print(_RuntimeSchema.Schema())
+print(QSqlUpgradeManager.DBObjects)

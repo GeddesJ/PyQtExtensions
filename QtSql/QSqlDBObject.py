@@ -1,5 +1,5 @@
 '''
-DBObject
+QSqlDBObject
     Copyright (C) 2018     Jonathan Geddes - jonathanericgeddes@protonmail.com
 
     This program is free software: you can redistribute it and/or modify
@@ -19,50 +19,57 @@ Created on 27 May 2018
 
 @author: jonathan
 '''
-from typing import *
 from PyQt5.QtSql import QSqlRecord, QSqlField
 from PyQt5.QtCore import QVariant
-from _RuntimeSchema import _RuntimeSchema
-import _DBProperty
+from typing import *
+import inspect
+from QSqlDBProperty import _QSqlDBProperty
+from QSqlUpgradeManager import QSqlUpgradeManager
 
-
-class DBObject(object):
+class QSqlDBObject(object):
     '''
     Decorator which initialises an object as a database object
     '''
 
-    def __init__(self, ModelObject: object) -> Callable:
-        '''
-        Constructor: Returns the wrapped class
-        '''
-        self._tableName = ModelObject.__name__
-        self._tableSchema = QSqlRecord()
-        self._updateRuntimeSchema()
 
-        class WrappedClass(ModelObject):
-            pass
-        
-        return WrappedClass
+    def __init__(self, cls):
+        '''
+        Constructor:
+        '''
+        inspect.getmro(cls)  # Process any super classes first
+        self._class = cls
+        self._handleProperties()
 
-    def DBProperty(self, index: int, fieldType: type,
-                   fget=None, fset=None, fdel=None, fdoc=None,
-                   **kwargs) -> Callable:
-        '''
-        Wrapper for adding DB fields to the schema
-        '''
-        field = DBObject._createField(fget, fset, fdel, kwargs, fieldType)
-        if self._tableSchema.contains(field.name()):
-            self._tableSchema.replace(index, field)
-        else:
-            self._tableSchema.insert(index, field)
-            
-        self._updateRuntimeSchema()
-        
-        return _DBProperty
+
+    def __call__(self, *args, **kwargs):
+        return self._class(*args, **kwargs)
+
+
+    def _handleProperties(self):
+        """
+        Iterates over the class dict looking for QSqlDBProperties.
+        Any properties found have their fields generated and added to the schema
+        """
+        cls = self._class
+        schema = QSqlRecord()
+
+        dbProperties = [getattr(cls, method) for method in cls.__dict__
+                        if type(getattr(cls, method)) is _QSqlDBProperty]
+
+        for dbProperty in dbProperties:
+            index = dbProperty.FieldIndex
+            fieldName = dbProperty.PropertyName
+            fieldArgs = dbProperty.FieldArguments
+            fieldType = dbProperty.FieldType
+
+            field = QSqlDBObject._createField(fieldName, fieldArgs, fieldType)
+            schema.insert(index, field)
+
+        QSqlUpgradeManager.RegisterDBObject(cls.__name__, schema)
+
 
     @staticmethod
-    def _createField(fget: Callable, fset: Callable, fdel: Callable,
-                     fieldConstraints: Mapping[str, Any],
+    def _createField(fieldName : str, fieldArgs: Mapping[str, Any],
                      fieldType: type) -> QSqlField:
         '''
         Creates the QSqlField object based on the field constraints.
@@ -71,22 +78,13 @@ class DBObject(object):
         get method, set method or delete method (in that order).
         If the name cannot be determined the function returns None
         '''
-        if (fieldConstraints.get("name") != None):
-            fieldName = fieldConstraints["name"]
-        elif (fget != None):
-            fieldName = fget.__name__
-        elif (fset != None):
-            fieldName = fset.__name__
-        elif (fdel != None):
-            fieldName = fdel.__name__
-        else:
-            return None
 
         field = QSqlField(fieldName,
                           QVariant.nameToType(fieldType.__name__))
 
-        DBObject._handleFieldConstraints(fieldConstraints, field)
+        QSqlDBObject._handleFieldConstraints(fieldArgs, field)
         return field
+
 
     @staticmethod
     def _handleFieldConstraints(constraints: Mapping[str, Any],
@@ -99,25 +97,26 @@ class DBObject(object):
 
             if (keyword == "defaultValue"):
                 field.setDefaultValue(QVariant(value))
+
             elif (keyword == "isAuto"):
                 field.setAutoValue(value)
+
             elif (keyword == "isReadOnly"):
                 field.setReadOnly(value)
+
             elif (keyword == "isRequired"):
                 field.setRequired(value)
+
             elif (keyword == "length"):
                 field.setLength(value)
+
             elif (keyword == "precision"):
                 field.setPrecision(value)
+
             elif (keyword == "isPrimary"):
                 # TODO: Handle primary keys
                 pass
+
             elif (keyword == "links"):
                 # TODO: Handle foreign keys
                 pass
-            
-    def _updateRuntimeSchema(self):
-        '''
-        Updates the runtime static object with the current schema of this object
-        '''
-        _RuntimeSchema.setTableRecord(self._tableName, self._tableSchema)
