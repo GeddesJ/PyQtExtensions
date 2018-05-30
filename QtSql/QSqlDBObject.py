@@ -21,10 +21,10 @@ Created on 27 May 2018
 '''
 from PyQt5.QtSql import QSqlRecord, QSqlField
 from PyQt5.QtCore import QVariant
+from QtSql.QSqlDBProperty import _QSqlDBProperty
+from QtSql.QSqlUpgradeManager import QSqlUpgradeManager
 from typing import *
 import inspect
-from QSqlDBProperty import _QSqlDBProperty
-from QSqlUpgradeManager import QSqlUpgradeManager
 
 class QSqlDBObject(object):
     '''
@@ -79,8 +79,7 @@ class QSqlDBObject(object):
         If the name cannot be determined the function returns None
         '''
 
-        field = QSqlField(fieldName,
-                          QVariant.nameToType(fieldType.__name__))
+        field = QSqlField(fieldName, fieldType)
 
         QSqlDBObject._handleFieldConstraints(fieldArgs, field)
         return field
