@@ -27,25 +27,22 @@ class QSqlDBProperty(object):
     This is just a factory for the _QSqlDBProperty class which contains the
     logic
     '''
-    
-    def __init__(self, index: int, fieldType: type, **kwargs):
+
+    def __init__(self, index: int, **kwargs):
         """
         Constructor:
         """
         self._index = index
-        self._fieldType = fieldType
         self._fieldArgs = kwargs
-        
-    def __call__(self, fget=None, fset=None, fdel=None, fdoc=None):
+
+    def __call__(self, fget = None, fset = None, fdel = None, fdoc = None):
         """
         Returns a new instance of the property
         """
         index = self._index
-        fieldType = self._fieldType
         fieldArgs = self._fieldArgs
-        return _QSqlDBProperty(index, fieldType, fieldArgs, 
-                               fget, fset, fdel, fdoc)
-        
+        return _QSqlDBProperty(index, fieldArgs, fget, fset, fdel, fdoc)
+
 
 class _QSqlDBProperty(property):
     """
@@ -54,14 +51,13 @@ class _QSqlDBProperty(property):
     """
 
 
-    def __init__(self, index: int, fieldType: type, fieldArgs, fget = None,
+    def __init__(self, index: int, fieldArgs, fget = None,
                       fset = None, fdel = None, fdoc = None):
             '''
             Constructor:
             '''
             super().__init__(fget, fset, fdel, fdoc)
             self._index = index
-            self._fieldType = fieldType
             self._fieldArgs = fieldArgs
 
 
@@ -104,36 +100,25 @@ class _QSqlDBProperty(property):
         return self._index
 
 
-    @property
-    def FieldType(self) -> type:
-        """
-        Returns the type of the property
-        """
-        return self._fieldType
-    
-    
     def getter(self, fget):
         """
         Sets a new get method for the QSqlDBProperty
         Overrides from property
         """
-        return type(self)(self._index, self._fieldType, self._fieldArgs,
-                          fget, self.fset, self.fdel)
-        
+        return type(self)(self._index, self._fieldArgs, fget, self.fset, self.fdel)
+
     def setter(self, fset):
         """
         Sets a new set method for the QSqlDBProperty
         Overrides from property
         """
-        return type(self)(self._index, self._fieldType, self._fieldArgs,
-                          self.fget, fset, self.fdel)
-        
-    
+        return type(self)(self._index, self._fieldArgs, self.fget, fset, self.fdel)
+
+
     def deleter(self, fdel):
         """
         Sets a new delete method for the QSqlDBProperty
         Overrides from property
         """
-        return type(self)(self._index, self._fieldType, self._fieldArgs,
-                          self.fget, self.fset, fdel)
+        return type(self)(self._index, self._fieldArgs, self.fget, self.fset, fdel)
 

@@ -31,7 +31,9 @@ class QSqlUpgradeManager(QObject):
     performs data and schema upgrades which are defined by classes which
     implement the QSqlDataUpgrade and QSqlSchemaUpgrade abstract classes.
     '''
-    DBObjects = {}
+    _DBObjects = {}
+    _schemaUpgrades = []
+    _dataUpgrades = []
 
 
     @staticmethod
@@ -40,17 +42,26 @@ class QSqlUpgradeManager(QObject):
         Adds a QSqlDBObject to the upgrade manager. This function is handled by the
         QSqlDBObject decorator so you shouldn't have to worry about calling it.
         '''
-        QSqlUpgradeManager.DBObjects[name] = schema
+        QSqlUpgradeManager._DBObjects[name] = schema
 
 
     @staticmethod
-    def RegisterUpgradeOperation(Upgrade):
+    def RegisterSchemaUpgradeOperation(upgrade: Callable[[QSqlDatabase], None]):
         '''
-        Adds a data upgrade operation to the upgrade manager. This function is
-        handled by the QSqlDataUpgrade QSqlSchemaUpgrade classes so you
+        Adds a schema upgrade operation to the upgrade manager. This function is
+        handled by the QtSqlSchemaUpgrade class so you
         shouldn't have to worry about calling it.
         '''
-        raise NotImplementedError("TODO: Implement Upgrade Operations")
+        QSqlUpgradeManager._schemaUpgrades.append(upgrade)
+    
+    @staticmethod
+    def RegisterDataUpgradeOperation(upgrade: Callable[[QSqlDatabase], None]):
+        """
+        Adds a data upgrade operation to the upgrade manager. This function is
+        handled by the QtSqlDataUpgrade class so you shouldn't have to worry
+        about calling it.
+        """
+        QSqlUpgradeManager._dataUpgrades.append(upgrade)
 
 
     def __init__(self, db = QSqlDatabase(), dangerousMode = False):
@@ -66,9 +77,23 @@ class QSqlUpgradeManager(QObject):
         self._query = QSqlQuery(db)
         self._dangerousMode = dangerousMode
 
-        # TODO: Perform schema/data upgrades first
+        # TODO: Perform schema upgrades first
 
         self._handleDBObjects()
+        
+        # TODO: Perform data upgrades
+        
+    
+    def _handleSchemaUpgrades(self):
+        """
+        Runs all new schema upgrades
+        """
+        
+    
+    def _handleDataUpgrades(self):
+        """
+        Runs all new data upgrades
+        """
 
 
     def _handleDBObjects(self):
@@ -79,7 +104,7 @@ class QSqlUpgradeManager(QObject):
         deleted
         """
         existingDBModel = self._constructDBModel()
-        newModel = QSqlUpgradeManager.DBObjects
+        newModel = QSqlUpgradeManager._DBObjects
         existingDBTables = set(existingDBModel.keys())
         newTables = set(newModel.keys())
 
@@ -95,7 +120,7 @@ class QSqlUpgradeManager(QObject):
             newSchema = newModel[tableName]
 
             if existingSchema != newSchema:
-                self._handleSchemaChanges(existingSchema, newSchema)
+                self._handleNewColumns(tableName, existingSchema, newSchema)
 
         # Remove any redundant tables if dangerousMode is on
         if self._dangerousMode:
@@ -104,15 +129,33 @@ class QSqlUpgradeManager(QObject):
                 qDebug("Dropped table " + tableName)
 
 
-    def _handleSchemaChanges(self, existingSchema: QSqlRecord, newSchema: QSqlRecord):
+    def _handleNewColumns(self, tableName:str, existingSchema: QSqlRecord,
+                             newSchema: QSqlRecord):
         """
         Compares the existing schema with the new schema to work out what
         changes need to be made.
-        Note: When a table column is modified, the table is deleted and readded.
-        This is because there is no standard SQL syntax for modifying a table
-        column. The data will be saved and copied back in so data loss should
-        be prevented.
+        Note: To modify a table column or insert a new column between existing
+        columns (as opposed to just appending at the end), a schema upgrade
+        routine will need to be written.
         """
+        i = 0
+        while i < min(existingSchema.count(), newSchema.count()):
+            if existingSchema.field(i) != newSchema.field(i):
+                raise UpgradeException("New schema cannot modify field " +
+                                       "properties or ordering without a schema" +
+                                       " upgrade routine.")
+            i += 1
+
+        if newSchema.count() > existingSchema.count():
+            while i < newSchema.count():
+                self._query.AlterTableAddColumn(tableName, newSchema.field(i))
+                i += 1
+
+        elif newSchema.count() < existingSchema.count() and self._dangerousMode:
+            while i < existingSchema.count():
+                self._query.AlterTableDropColumn(tableName, existingSchema.field(i))
+                i += 1
+
 
 
     def _constructDBModel(self) -> Mapping[str, QSqlRecord]:
@@ -125,4 +168,11 @@ class QSqlUpgradeManager(QObject):
             existingDBModel[tableName] = self._db.record(tableName)
 
         return existingDBModel
+
+
+class UpgradeException(BaseException):
+    """
+    Raised when errors occur running the automatic upgrades
+    """
+    pass
 

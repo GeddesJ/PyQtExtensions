@@ -42,7 +42,7 @@ class QSqlDBObject(object):
 
 
     def __call__(self, *args, **kwargs):
-        return self._class(*args, **kwargs)
+        return self._class(args, kwargs)
 
 
     def _handleProperties(self):
@@ -60,17 +60,15 @@ class QSqlDBObject(object):
             index = dbProperty.FieldIndex
             fieldName = dbProperty.PropertyName
             fieldArgs = dbProperty.FieldArguments
-            fieldType = dbProperty.FieldType
 
-            field = QSqlDBObject._createField(fieldName, fieldArgs, fieldType)
+            field = QSqlDBObject._createField(fieldName, fieldArgs)
             schema.insert(index, field)
 
         QSqlUpgradeManager.RegisterDBObject(cls.__name__, schema)
 
 
     @staticmethod
-    def _createField(fieldName : str, fieldArgs: Mapping[str, Any],
-                     fieldType: type) -> QSqlField:
+    def _createField(fieldName : str, fieldArgs: Mapping[str, Any]) -> QSqlField:
         '''
         Creates the QSqlField object based on the field constraints.
         The name of the field is defined in the field constraints.
@@ -79,7 +77,7 @@ class QSqlDBObject(object):
         If the name cannot be determined the function returns None
         '''
 
-        field = QSqlField(fieldName, fieldType)
+        field = QSqlField(fieldName, QVariant(fieldName).type())
 
         QSqlDBObject._handleFieldConstraints(fieldArgs, field)
         return field

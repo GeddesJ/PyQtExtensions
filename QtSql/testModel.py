@@ -19,9 +19,9 @@ Created on 27 May 2018
 
 @author: jonathan
 '''
-from QSqlDBObject import QSqlDBObject
-from QSqlDBProperty import QSqlDBProperty
-from QSqlUpgradeManager import QSqlUpgradeManager
+from QtSql.QSqlDBObject import QSqlDBObject
+from QtSql.QSqlDBProperty import QSqlDBProperty
+from QtSql.QSqlUpgradeManager import QSqlUpgradeManager
 
 @QSqlDBObject
 class Employee(object):
@@ -36,7 +36,7 @@ class Employee(object):
         self._role = role
         self._salary = salary
         
-    @QSqlDBProperty(0, str)
+    @QSqlDBProperty(0)
     def name(self):
         return self._name
     
@@ -44,13 +44,23 @@ class Employee(object):
     def name(self, value):
         self._name = value
     
-    @QSqlDBProperty(1, str)
+    @QSqlDBProperty(1)
     def role(self):
         return self._role
     
-    @QSqlDBProperty(2, float)
+    @QSqlDBProperty(2)
     def salary(self):
         return self._salary
+    
+@QSqlDBObject
+class Boss(Employee):
+    def __init__(self, name, salary, department):
+        super().__init__(name, "Manager", salary)
+        self._department = department
+    
+    @QSqlDBProperty(3)    
+    def department(self):
+        return self._department
     
 
 bob = Employee("Bob", "Software Engineer", 95000.45)
@@ -61,4 +71,7 @@ print (bob.name + " is now transgender and has changed her name")
 steve = Employee("Steve", "Marketing", 75000)
 print(steve.name + " works in " + steve.role)
 
-print(QSqlUpgradeManager.DBObjects)
+john = Boss("John", 125000, "Finance")
+print(john.name + " is a " + john.role + " of " + john.department)
+
+print(QSqlUpgradeManager._DBObjects)
